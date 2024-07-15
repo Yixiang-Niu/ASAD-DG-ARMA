@@ -304,10 +304,17 @@ AdjMat_rec = np.zeros_like(AdjMat)
     for j in range(AdjMat_rec.shape[0]):
         AdjMat_rec[j,:,:] = percent(AdjMat[j,:,:])  # retain 20% of connections in each adjacency matrix
 
+model = AAD(2, 64, 32, 15, AdjMat)    # KUL dataset: 2 directions (left/right), 64 EEG channels, 32 frequency bands, 15 source subjects (the remaining one is the target subject)
+
 early_stopping = tf.keras.callbacks.EarlyStopping(monitor='label_sparse_categorical_accuracy', min_delta=1e-16, patience=10,
                                                   verbose=2, mode='auto', restore_best_weights=True)
 
 model.fit(EEG_train,
-          [LOC_train, np.repeat(np.expand_dims(AdjMat_rec,0), segments, axis=0), LOC_train, np.zeros((segments,))],
+          [LOC_train, np.repeat(np.expand_dims(AdjMat_rec,0), segments, axis=0), LOC_train, np.zeros((segments,))],    # np.zeros((segments,)) is not used by MI loss
           batch_size=64, epochs=80, verbose=1, initial_epoch=0, shuffle=True,
           callbacks=[Weight(w0, w1, w2, w3), early_stopping])
+"""
+EEG_train: differential entropy features for training. The shape is (num_samples_per_subject, num_subjects, num_channels, num_freqnency_bands), e.g., (10000, 15, 64, 32).
+
+LOC_train: ground_truth label, 1 for left and 2 for right. The shape is (num_samples_per_subject, num_subjects), e.g., (10000, 15).
+"""
