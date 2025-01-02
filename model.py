@@ -209,6 +209,12 @@ def percent(A):
     A[A < A_sort[a]] = 0.
     return A
 
+def symmetry(A):
+    """
+    The adjacency matrix is symmetrized if it is asymmetric, otherwise it is unchanged
+    """
+    return A + tf.math.multiply(tf.transpose(A)-A, tf.cast(tf.transpose(A)>A, tf.float32)) 
+
 def AAD(directions, channels, features, domains, AdjMat):
     '''
     Args:
@@ -239,14 +245,14 @@ def AAD(directions, channels, features, domains, AdjMat):
     AdjMat_public = tf.numpy_function(percent, [AdjMat_public], tf.float32)
     AdjMat_private = [tf.numpy_function(percent, [AdjMat_private[i]], tf.float32) for i in range(domains)]
 
-    AdjMat_public = tf.numpy_function(spektral.utils.normalized_adjacency, [AdjMat_public, True], tf.float32)
-    AdjMat_private = [tf.numpy_function(spektral.utils.normalized_adjacency, [AdjMat_private[i], True], tf.float32) for i in range(domains)]
+    AdjMat_publicSYM = tf.numpy_function(spektral.utils.normalized_adjacency, [symmetry(AdjMat_public), True], tf.float32)
+    AdjMat_privateSYM = [tf.numpy_function(spektral.utils.normalized_adjacency, [symmetry(AdjMat_private[i]), True], tf.float32) for i in range(domains)]
 
     # Encoder
-    Encoder_public = Encoder(AdjMat_public)
+    Encoder_public = Encoder(AdjMat_publicSYM)
     encode_public = [Encoder_public(eeg[i]) for i in range(domains)]
 
-    Encoder_private = [Encoder(AdjMat_private[i]) for i in range(domains)]
+    Encoder_private = [Encoder(AdjMat_privateSYM[i]) for i in range(domains)]
     encode_private = [Encoder_private[i](eeg[i]) for i in range(domains)]
 
     Add = tf.keras.layers.Add()
